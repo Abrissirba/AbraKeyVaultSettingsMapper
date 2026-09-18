@@ -89,12 +89,4 @@ configuration.AddAzureKeyVault(
 
 The optional middle segment lets you scope references per logical vault name without forcing the actual secret name to match the final configuration path. When you omit that segment, the mapper treats the reference as a single-vault mapping.
 
-## Publishing
 
-This repository includes `.github/workflows/publish.yml` for GitHub Actions publishing with NuGet Trusted Publishing.
-
-Before the workflow can publish, configure these in GitHub and NuGet.org:
-
-1. Add a **Trusted Publishing** policy on NuGet.org for this repository and the workflow file `publish.yml`.
-2. Add a repository variable named `NUGET_USERNAME` with your NuGet.org username.
-3. Publish by pushing a tag like `v1.0.1`, or run the workflow manually and provide a version number.
