@@ -1,0 +1,83 @@
+name: Publish NuGet package
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version to publish, for example 1.0.1"
+        required: true
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Resolve package version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          if [[ -z "$VERSION" ]]; then
+            echo "Package version could not be resolved." >&2
+            exit 1
+          fi
+
+          echo "PACKAGE_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Restore
+        run: dotnet restore ./AbraKeyVaultSettingsMapper.sln --nologo
+
+      - name: Test
+        run: dotnet test ./AbraKeyVaultSettingsMapper.sln -c Release --no-restore --nologo
+
+      - name: Pack
+        run: >
+          dotnet pack ./src/AbraKeyVaultSettingsMapper/AbraKeyVaultSettingsMapper.csproj
+          -c Release
+          --no-restore
+          --nologo
+          -p:ContinuousIntegrationBuild=true
+          -p:Version=${{ env.PACKAGE_VERSION }}
+          -o ./artifacts
+
+      - name: NuGet login with Trusted Publishing
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USERNAME }}
+
+      - name: Publish package to NuGet.org
+        shell: bash
+        run: |
+          shopt -s nullglob
+          packages=(./artifacts/*.nupkg ./artifacts/*.snupkg)
+
+          if [[ ${#packages[@]} -eq 0 ]]; then
+            echo "No NuGet packages or symbol packages were created." >&2
+            exit 1
+          fi
+
+          for package in "${packages[@]}"; do
+            dotnet nuget push "$package" \
+              --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
