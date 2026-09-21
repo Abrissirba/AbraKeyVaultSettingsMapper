@@ -5,14 +5,14 @@ using Shouldly;
 
 namespace AbraKeyVaultSettingsMapper.Tests;
 
-public class AzureCredentialFactoryTests
+public class AbraAzureCredentialFactoryTests
 {
     [Fact]
     public void Create_InDevelopmentWithoutManagedIdentityOrClientId_ReturnsAzureCliCredential()
     {
-        using var _ = new EnvironmentVariableScope();
+        using var _ = new AbraEnvironmentVariableScope();
 
-        var credential = AzureCredentialFactory.Create(new TestHostEnvironment(Environments.Development));
+        var credential = AbraAzureCredentialFactory.Create(new AbraTestHostEnvironment(Environments.Development));
 
         credential.ShouldBeOfType<AzureCliCredential>();
     }
@@ -20,9 +20,9 @@ public class AzureCredentialFactoryTests
     [Fact]
     public void Create_InProductionWithoutManagedIdentity_ReturnsDefaultAzureCredential()
     {
-        using var _ = new EnvironmentVariableScope();
+        using var _ = new AbraEnvironmentVariableScope();
 
-        var credential = AzureCredentialFactory.Create(new TestHostEnvironment(Environments.Production));
+        var credential = AbraAzureCredentialFactory.Create(new AbraTestHostEnvironment(Environments.Production));
 
         credential.ShouldBeOfType<DefaultAzureCredential>();
     }
@@ -30,11 +30,11 @@ public class AzureCredentialFactoryTests
     [Fact]
     public void Create_WithManagedIdentityEndpointAndClientId_ReturnsManagedIdentityCredential()
     {
-        using var scope = new EnvironmentVariableScope();
-        scope.Set(AzureCredentialFactoryDefaults.IdentityEndpointVariableName, "http://localhost/metadata/identity/oauth2/token");
-        scope.Set(AzureCredentialFactoryDefaults.AzureClientIdVariableName, "client-id");
+        using var scope = new AbraEnvironmentVariableScope();
+        scope.Set(AbraAzureCredentialFactoryDefaults.IdentityEndpointVariableName, "http://localhost/metadata/identity/oauth2/token");
+        scope.Set(AbraAzureCredentialFactoryDefaults.AzureClientIdVariableName, "client-id");
 
-        var credential = AzureCredentialFactory.Create(new TestHostEnvironment(Environments.Production));
+        var credential = AbraAzureCredentialFactory.Create(new AbraTestHostEnvironment(Environments.Production));
 
         credential.ShouldBeOfType<ManagedIdentityCredential>();
     }
@@ -42,10 +42,10 @@ public class AzureCredentialFactoryTests
     [Fact]
     public void Create_WithManagedIdentityEndpointWithoutClientId_ReturnsManagedIdentityCredential()
     {
-        using var scope = new EnvironmentVariableScope();
-        scope.Set(AzureCredentialFactoryDefaults.MsiEndpointVariableName, "http://localhost/metadata/identity/oauth2/token");
+        using var scope = new AbraEnvironmentVariableScope();
+        scope.Set(AbraAzureCredentialFactoryDefaults.MsiEndpointVariableName, "http://localhost/metadata/identity/oauth2/token");
 
-        var credential = AzureCredentialFactory.Create(new TestHostEnvironment(Environments.Production));
+        var credential = AbraAzureCredentialFactory.Create(new AbraTestHostEnvironment(Environments.Production));
 
         credential.ShouldBeOfType<ManagedIdentityCredential>();
     }
@@ -53,17 +53,17 @@ public class AzureCredentialFactoryTests
     [Fact]
     public void Create_WithCustomVariableNames_UsesConfiguredNames()
     {
-        using var scope = new EnvironmentVariableScope();
+        using var scope = new AbraEnvironmentVariableScope();
         scope.Set("CUSTOM_MANAGED_IDENTITY_ENDPOINT", "http://localhost/metadata/identity/oauth2/token");
 
-        var options = new AzureCredentialFactoryOptions
+        var options = new AbraAzureCredentialFactoryOptions
         {
             AzureClientIdVariableName = "CUSTOM_AZURE_CLIENT_ID"
         };
         options.ManagedIdentityEndpointVariableNames.Clear();
         options.ManagedIdentityEndpointVariableNames.Add("CUSTOM_MANAGED_IDENTITY_ENDPOINT");
 
-        var credential = AzureCredentialFactory.Create(new TestHostEnvironment(Environments.Production), options);
+        var credential = AbraAzureCredentialFactory.Create(new AbraTestHostEnvironment(Environments.Production), options);
 
         credential.ShouldBeOfType<ManagedIdentityCredential>();
     }
@@ -71,17 +71,17 @@ public class AzureCredentialFactoryTests
     [Fact]
     public void Create_WithWhitespaceManagedIdentityVariableName_ThrowsHelpfulException()
     {
-        var options = new AzureCredentialFactoryOptions();
+        var options = new AbraAzureCredentialFactoryOptions();
         options.ManagedIdentityEndpointVariableNames.Clear();
         options.ManagedIdentityEndpointVariableNames.Add(" ");
 
         var exception = Should.Throw<ArgumentException>(
-            () => AzureCredentialFactory.Create(new TestHostEnvironment(Environments.Production), options));
+            () => AbraAzureCredentialFactory.Create(new AbraTestHostEnvironment(Environments.Production), options));
 
         exception.ParamName.ShouldBe("options");
     }
 
-    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
+    private sealed class AbraTestHostEnvironment(string environmentName) : IHostEnvironment
     {
         public string EnvironmentName { get; set; } = environmentName;
 
@@ -92,15 +92,15 @@ public class AzureCredentialFactoryTests
         public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 
-    private sealed class EnvironmentVariableScope : IDisposable
+    private sealed class AbraEnvironmentVariableScope : IDisposable
     {
         private readonly Dictionary<string, string?> _originalValues = new(StringComparer.Ordinal);
 
-        public EnvironmentVariableScope()
+        public AbraEnvironmentVariableScope()
         {
-            Track(AzureCredentialFactoryDefaults.AzureClientIdVariableName);
-            Track(AzureCredentialFactoryDefaults.IdentityEndpointVariableName);
-            Track(AzureCredentialFactoryDefaults.MsiEndpointVariableName);
+            Track(AbraAzureCredentialFactoryDefaults.AzureClientIdVariableName);
+            Track(AbraAzureCredentialFactoryDefaults.IdentityEndpointVariableName);
+            Track(AbraAzureCredentialFactoryDefaults.MsiEndpointVariableName);
             Track("CUSTOM_AZURE_CLIENT_ID");
             Track("CUSTOM_MANAGED_IDENTITY_ENDPOINT");
 

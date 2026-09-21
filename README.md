@@ -34,13 +34,15 @@ dotnet add package AbraKeyVaultSettingsMapper
 
 Azure Functions can be frustrating to diagnose when `DefaultAzureCredential` falls through several credential sources and the active source is misconfigured. In that state the host can spend a long time probing credentials and eventually time out with little or no useful console output.
 
-`AzureCredentialFactory` is included to make that behavior more predictable:
+`AbraAzureCredentialFactory` is included to make that behavior more predictable:
 
 - in local development it prefers `AzureCliCredential` when no managed identity endpoint or client ID is configured
 - in Azure it prefers `ManagedIdentityCredential` as soon as the host exposes a managed identity endpoint
 - it falls back to `DefaultAzureCredential` when managed identity is not available
 
 This reduces the "silent timeout" case during startup and gives consumers a single place to control which environment variable names are used.
+
+`AddAbraAzureKeyVault` wraps the common `if (!string.IsNullOrWhiteSpace(keyVaultName))` startup check, builds the vault URI, chooses the credential, and applies `AbraAzureKeyVaultAppSettingsMapper` for you.
 
 ### Single Key Vault
 
@@ -58,60 +60,41 @@ If you only use one Key Vault, omit the `keyVaultName` argument and reference se
 ```
 
 ```csharp
-using Azure.Identity;
 using AbraKeyVaultSettingsMapper;
 
 var builder = WebApplication.CreateBuilder(args);
-var configuration = builder.Configuration;
-var credential = AzureCredentialFactory.Create(builder.Environment);
-
-configuration.AddAzureKeyVault(
-    new Uri($"https://{configuration["Config:KeyVaultName"]}.vault.azure.net/"),
-    credential,
-    new AbraAzureKeyVaultAppSettingsMapper(configuration)
-);
+builder.AddAbraAzureKeyVault(builder.Configuration["Config:KeyVaultName"]);
 ```
 
 ### Multiple Key Vault Mappings
 
 ```csharp
-using Azure.Identity;
 using AbraKeyVaultSettingsMapper;
 
 var builder = WebApplication.CreateBuilder(args);
-var configuration = builder.Configuration;
-var credential = AzureCredentialFactory.Create(builder.Environment);
-
-configuration.AddAzureKeyVault(
-    new Uri($"https://{configuration["Config:SharedKeyVaultName"]}.vault.azure.net/"),
-    credential,
-    new AbraAzureKeyVaultAppSettingsMapper(configuration, "Shared")
-);
-
-configuration.AddAzureKeyVault(
-    new Uri($"https://{configuration["Config:AppKeyVaultName"]}.vault.azure.net/"),
-    credential,
-    new AbraAzureKeyVaultAppSettingsMapper(configuration, "App")
-);
+builder.AddAbraAzureKeyVault(builder.Configuration["Config:SharedKeyVaultName"], "Shared");
+builder.AddAbraAzureKeyVault(builder.Configuration["Config:AppKeyVaultName"], "App");
 ```
 
 ### Customizing environment variable names
 
-If your host or deployment conventions use different variable names, pass `AzureCredentialFactoryOptions`:
+If your host or deployment conventions use different variable names, pass `AbraAzureCredentialFactoryOptions`:
 
 ```csharp
 using AbraKeyVaultSettingsMapper;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var options = new AzureCredentialFactoryOptions
+var options = new AbraAzureCredentialFactoryOptions
 {
     AzureClientIdVariableName = "MY_AZURE_CLIENT_ID"
 };
 options.ManagedIdentityEndpointVariableNames.Clear();
 options.ManagedIdentityEndpointVariableNames.Add("MY_IDENTITY_ENDPOINT");
 
-var credential = AzureCredentialFactory.Create(builder.Environment, options);
+builder.AddAbraAzureKeyVault(
+    builder.Configuration["Config:KeyVaultName"],
+    credentialFactoryOptions: options);
 ```
 
 By default the factory uses:
@@ -127,4 +110,3 @@ By default the factory uses:
 - `AzureKeyVaultRef:SomeSecretName`
 
 The optional middle segment lets you scope references per logical vault name without forcing the actual secret name to match the final configuration path. When you omit that segment, the mapper treats the reference as a single-vault mapping.
-

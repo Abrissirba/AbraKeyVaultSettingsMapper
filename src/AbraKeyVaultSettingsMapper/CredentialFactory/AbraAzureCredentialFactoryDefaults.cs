@@ -1,9 +1,9 @@
 namespace AbraKeyVaultSettingsMapper;
 
 /// <summary>
-/// Default environment variable names used by <see cref="AzureCredentialFactory" />.
+/// Default environment variable names used by <see cref="AbraAzureCredentialFactory" />.
 /// </summary>
-public static class AzureCredentialFactoryDefaults
+public static class AbraAzureCredentialFactoryDefaults
 {
     /// <summary>
     /// Default environment variable used to resolve the Azure client ID.

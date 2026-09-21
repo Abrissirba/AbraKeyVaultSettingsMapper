@@ -7,7 +7,7 @@ namespace AbraKeyVaultSettingsMapper;
 /// <summary>
 /// Creates Azure credentials with predictable environment-specific behavior for Key Vault configuration loading.
 /// </summary>
-public static class AzureCredentialFactory
+public static class AbraAzureCredentialFactory
 {
     /// <summary>
     /// Creates a credential using the default environment variable names.
@@ -23,11 +23,11 @@ public static class AzureCredentialFactory
     /// </summary>
     /// <param name="environment">The current host environment.</param>
     /// <param name="options">Options for resolving managed identity related environment variables.</param>
-    public static TokenCredential Create(IHostEnvironment environment, AzureCredentialFactoryOptions? options)
+    public static TokenCredential Create(IHostEnvironment environment, AbraAzureCredentialFactoryOptions? options)
     {
         ArgumentNullException.ThrowIfNull(environment);
 
-        options ??= new AzureCredentialFactoryOptions();
+        options ??= new AbraAzureCredentialFactoryOptions();
         ValidateOptions(options);
 
         var azureClientId = GetConfiguredValue(options.AzureClientIdVariableName);
@@ -50,7 +50,7 @@ public static class AzureCredentialFactory
         return new DefaultAzureCredential();
     }
 
-    private static void ValidateOptions(AzureCredentialFactoryOptions options)
+    private static void ValidateOptions(AbraAzureCredentialFactoryOptions options)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(options.AzureClientIdVariableName);
 
