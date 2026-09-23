@@ -76,10 +76,16 @@ jobs:
         shell: bash
         run: |
           shopt -s nullglob
-          packages=(./artifacts/*.nupkg ./artifacts/*.snupkg)
+          packages=()
+
+          for package in ./artifacts/*.nupkg; do
+            if [[ "$package" != *.snupkg ]]; then
+              packages+=("$package")
+            fi
+          done
 
           if [[ ${#packages[@]} -eq 0 ]]; then
-            echo "No NuGet packages or symbol packages were created." >&2
+            echo "No NuGet packages were created." >&2
             exit 1
           fi
 
